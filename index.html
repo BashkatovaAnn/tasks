@@ -8,7 +8,10 @@
 </head>
 <body>
   <main class="app">
-    <h1>Мои задачи</h1>
+    <header class="header">
+      <h1>Мои задачи</h1>
+      <div class="now" id="now"></div>
+    </header>
 
     <form id="task-form" class="task-form">
       <input
@@ -18,6 +21,10 @@
         autocomplete="off"
         required
       />
+      <div class="datetime-row">
+        <label for="task-deadline">Сделать до:</label>
+        <input type="datetime-local" id="task-deadline" />
+      </div>
       <button type="submit">Добавить</button>
     </form>
 
