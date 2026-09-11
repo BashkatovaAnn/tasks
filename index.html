@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fdf2f6" />
+  <title>Мои задачи</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Задачи" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <!-- Шапка -->
+    <header class="header">
+      <h1>Мои задачи</h1>
+      <p class="now" id="now" aria-live="polite"></p>
+      <p class="holiday" id="holiday" hidden></p>
+      <p class="workday" id="workday" hidden></p>
+      <p class="birthday-banner" id="birthday-banner" hidden></p>
+    </header>
+
+    <!-- Переключатель вид -->
+    <div class="view-switch" role="tablist" aria-label="Режим просмотра">
+      <button type="button" data-view="today" role="tab" aria-selected="false">Сегодня</button>
+      <button type="button" data-view="week" class="active" role="tab" aria-selected="true">Неделя</button>
+      <button type="button" data-view="month" role="tab" aria-selected="false">Месяц</button>
+    </div>
+
+    <!-- Навигация по периодам -->
+    <div class="period-nav" id="period-nav">
+      <button type="button" id="prev-period" aria-label="Предыдущий период">←</button>
+      <div class="period-title" id="period-title"></div>
+      <button type="button" id="next-period" aria-label="Следующий период">→</button>
+      <button type="button" id="today-btn" class="today-btn">Сегодня</button>
+    </div>
+
+    <!-- Форма добавления -->
+    <form id="task-form" class="task-form" novalidate>
+      <label class="sr-only" for="task-input">Текст задачи</label>
+      <input
+        type="text"
+        id="task-input"
+        placeholder="Что нужно сделать?"
+        autocomplete="off"
+        required
+      />
+
+      <div class="datetime-row">
+        <label for="task-date">Дата:</label>
+        <input type="date" id="task-date" />
+      </div>
+
+      <div class="datetime-row time-row">
+        <label for="task-time">Время:</label>
+        <input type="time" id="task-time" />
+        <label class="checkbox-inline">
+          <input type="checkbox" id="no-time" />
+          <span>Без времени</span>
+        </label>
+      </div>
+
+      <p class="form-hint">Клик по задаче открывает редактор. Тяни — чтобы перенести на другой день.</p>
+
+      <button type="submit">Добавить</button>
+    </form>
+
+    <!-- Вид «Сегодня» -->
+    <div class="today-view" id="today-view" hidden></div>
+
+    <!-- Недельный вид -->
+    <div class="week-list" id="week-list"></div>
+
+    <!-- Месячный вид -->
+    <div class="month-view" id="month-view" hidden>
+      <div class="month-weekdays" id="month-weekdays"></div>
+      <div class="month-grid" id="month-grid"></div>
+    </div>
+
+    <!-- Задачи без даты -->
+    <section class="unscheduled dropzone" id="unscheduled-section" data-drop="unscheduled">
+      <h2 class="section-title">Без даты</h2>
+      <ul id="unscheduled-list" class="task-list"></ul>
+    </section>
+
+    <!-- Подвал -->
+    <footer class="footer">
+      <span id="counter">0 из 0 осталось</span>
+      <div class="footer-actions">
+        <button type="button" id="birthdays-btn" class="birthdays-btn">🎂 Дни рождения</button>
+        <button type="button" id="stats-btn" class="birthdays-btn">📊 Статистика</button>
+        <button type="button" id="settings-btn" class="birthdays-btn">⚙️ Настройки</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Модальное окно редактирования задачи -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <header class="modal-header">
+        <h2 id="modal-title">Редактировать задачу</h2>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Закрыть">✕</button>
+      </header>
+
+      <form id="edit-form" class="modal-body" novalidate>
+        <label class="field">
+          <span class="field-label">Название</span>
+          <input type="text" id="edit-text" required />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Дата</span>
+            <input type="date" id="edit-date" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Время</span>
+            <input type="time" id="edit-time" />
+          </label>
+        </div>
+
+        <label class="checkbox-inline">
+          <input type="checkbox" id="edit-no-time" />
+          <span>Без времени (задача на весь день)</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Повтор</span>
+          <select id="edit-repeat">
+            <option value="none">Не повторять</option>
+            <option value="daily">Каждый день</option>
+            <option value="weekdays">По будням (пн–пт)</option>
+            <option value="weekly">Каждую неделю</option>
+            <option value="monthly">Каждый месяц</option>
+            <option value="yearly">Каждый год</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Комментарий / описание</span>
+          <textarea
+            id="edit-comment"
+            rows="3"
+            placeholder="Заметки, детали, ссылки…"
+          ></textarea>
+        </label>
+
+        <footer class="modal-actions">
+          <button type="button" class="btn-ghost" id="edit-delete">Удалить</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn-ghost" id="edit-cancel">Отмена</button>
+            <button type="submit" class="btn-primary">Сохранить</button>
+          </div>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно дней рождения -->
+  <div class="modal-backdrop" id="bd-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bd-modal-title">
+      <header class="modal-header">
+        <h2 id="bd-modal-title">🎂 Дни рождения</h2>
+        <button type="button" class="modal-close" id="bd-modal-close" aria-label="Закрыть">✕</button>
+      </header>
+
+      <div class="modal-body">
+        <form id="bd-form" class="bd-form" novalidate>
+          <label class="field">
+            <span class="field-label">Имя</span>
+            <input type="text" id="bd-name" placeholder="Например, Мама" required />
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span class="field-label">Дата рождения</span>
+              <input type="date" id="bd-date" required />
+            </label>
+            <label class="field">
+              <span class="field-label">Заметка (необязательно)</span>
+              <input type="text" id="bd-note" placeholder="Поздравить утром" />
+            </label>
+          </div>
+
+          <div class="bd-form-actions">
+            <button type="submit" class="btn-primary" id="bd-submit">Добавить</button>
+            <button type="button" class="btn-ghost" id="bd-cancel-edit" hidden>Отменить редактирование</button>
+          </div>
+        </form>
+
+        <hr class="bd-sep" />
+        <h3 class="bd-list-title">Список</h3>
+        <ul id="bd-list" class="bd-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно статистики -->
+  <div class="modal-backdrop" id="stats-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+      <header class="modal-header">
+        <h2 id="stats-title">📊 Статистика</h2>
+        <button type="button" class="modal-close" id="stats-close" aria-label="Закрыть">✕</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="stats-switch">
+          <button type="button" data-stats="week" class="active">За неделю</button>
+          <button type="button" data-stats="month">За месяц</button>
+        </div>
+
+        <div class="stats-grid" id="stats-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно настроек -->
+  <div class="modal-backdrop" id="settings-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <header class="modal-header">
+        <h2 id="settings-title">⚙️ Настройки</h2>
+        <button type="button" class="modal-close" id="settings-close" aria-label="Закрыть">✕</button>
+      </header>
+
+      <div class="modal-body">
+        <h3 class="bd-list-title">Рабочий день (для таймера сверху)</h3>
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Начало</span>
+            <input type="time" id="set-work-start" />
+          </label>
+          <label class="field">
+            <span class="field-label">Конец</span>
+            <input type="time" id="set-work-end" />
+          </label>
+        </div>
+
+        <label class="checkbox-inline">
+          <input type="checkbox" id="set-compact" />
+          <span>Компактный режим (для телефона)</span>
+        </label>
+
+        <hr class="bd-sep" />
+
+        <h3 class="bd-list-title">📅 График работы мужа</h3>
+        <label class="field">
+          <span class="field-label">Начало цикла (первый рабочий день)</span>
+          <input type="date" id="sched-start" />
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Рабочих дней</span>
+            <input type="number" id="sched-work" min="1" max="15" value="2" />
+          </label>
+          <label class="field">
+            <span class="field-label">Выходных дней</span>
+            <input type="number" id="sched-rest" min="1" max="15" value="2" />
+          </label>
+        </div>
+        <p class="form-hint">
+          По умолчанию 2/2, начиная с 12.09.2026. Метки «раб/вых» появятся в недельном и месячном виде.
+        </p>
+
+        <hr class="bd-sep" />
+
+        <h3 class="bd-list-title">Календарь графика</h3>
+        <div class="sched-nav">
+          <button type="button" id="sched-prev" aria-label="Предыдущий месяц">←</button>
+          <div class="sched-title" id="sched-title"></div>
+          <button type="button" id="sched-next" aria-label="Следующий месяц">→</button>
+          <button type="button" id="sched-today" class="today-btn">Сегодня</button>
+        </div>
+        <div class="sched-weekdays" id="sched-weekdays"></div>
+        <div class="sched-grid" id="sched-grid"></div>
+
+        <div class="sched-legend">
+          <span class="legend-item"><span class="dot work"></span>Рабочий</span>
+          <span class="legend-item"><span class="dot rest"></span>Выходной</span>
+          <span class="legend-item"><span class="dot today"></span>Сегодня</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
